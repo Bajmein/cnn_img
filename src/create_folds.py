@@ -1,9 +1,11 @@
 # import time
 import pandas as pd
+import numpy as np
 import os
 import torch
 from PIL import Image
-from torch.utils.data import DataLoader
+from imblearn.over_sampling import SMOTE
+from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
 
 
@@ -15,8 +17,6 @@ def create_dataset(folder_path):
             file_path = os.path.join(category_path, file_name)
             if os.path.isfile(file_path) and file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
                 my_list.append([file_path, category])
-    # print(my_list)
-    # time.sleep(120)
     return pd.DataFrame(my_list, columns=['file_path', 'label'])
 
 
@@ -74,7 +74,9 @@ class ImageDataset(torch.utils.data.Dataset):
 
 
 def return_dataset():
-    train_df, val_df, test_df = label_dataset()
+    train_df, val_df, test_df = label_dataset()  # Asumiendo que tienes esta función definida
+
+    # Transformaciones para el conjunto de entrenamiento (Data Augmentation)
     train_transform_cnn = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.Grayscale(),
@@ -85,6 +87,7 @@ def return_dataset():
         transforms.Normalize(mean=[0.5], std=[0.5]),
     ])
 
+    # Transformaciones para los conjuntos de validación y test (sin aumento de datos)
     val_transform_cnn = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.Grayscale(),
@@ -92,14 +95,32 @@ def return_dataset():
         transforms.Normalize(mean=[0.5], std=[0.5]),
     ])
 
+    # Definir los datasets
     train_dataset_cnn = ImageDataset(train_df, transform=train_transform_cnn)
     val_dataset_cnn = ImageDataset(val_df, transform=val_transform_cnn)
+    test_dataset_cnn = ImageDataset(test_df, transform=val_transform_cnn)
+
+    # Aplicar SMOTE en los datos de entrenamiento
+    smote = SMOTE(sampling_strategy='auto', random_state=42)
+    data, labels = zip(*[(x.view(-1).numpy(), y.item()) for x, y in train_dataset_cnn])
+    data, labels = np.array(data), np.array(labels)
+
+    # Generar datos sintéticos
+    data_resampled, labels_resampled = smote.fit_resample(data, labels)
+    data_resampled = data_resampled.reshape(-1, 1, 256, 256)  # Ajustar dimensiones
+
+    # Crear un TensorDataset con los datos balanceados
+    smote_dataset = TensorDataset(torch.tensor(data_resampled, dtype=torch.float32),
+                                  torch.tensor(labels_resampled, dtype=torch.long))
 
     batch_size = 32
-    train_loader_cnn = DataLoader(train_dataset_cnn, batch_size=batch_size, shuffle=True)
-    val_loader_cnn = DataLoader(val_dataset_cnn, batch_size=batch_size, shuffle=False)
 
-    return train_loader_cnn, val_loader_cnn
+    # Crear los DataLoaders
+    train_loader_cnn = DataLoader(smote_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_loader_cnn = DataLoader(val_dataset_cnn, batch_size=batch_size, shuffle=False, num_workers=4)
+    test_loader_cnn = DataLoader(test_dataset_cnn, batch_size=batch_size, shuffle=False, num_workers=4)
+
+    return train_loader_cnn, val_loader_cnn, test_loader_cnn
 
 
 if __name__ == "__main__":
