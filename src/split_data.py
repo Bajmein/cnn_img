@@ -28,8 +28,8 @@ def redistribute_data(train_dir, val_dir, class_names, val_split=0.2, seed=42) -
 
 
 if __name__ == "__main__":
-    train_dir: str = "C:/Users/bajme/PycharmProjects/clasificador_img/input/train"
-    val_dir: str = "C:/Users/bajme/PycharmProjects/clasificador_img/input/val"
+    train_dir: str = "C:/Users/usuario/PycharmProjects/cnn_img/input/train"
+    val_dir: str = "C:/Users/usuario/PycharmProjects/cnn_img/input/val"
     class_names: list[str] = ["NORMAL", "PNEUMONIA"]
 
     redistribute_data(train_dir, val_dir, class_names, val_split=0.2)

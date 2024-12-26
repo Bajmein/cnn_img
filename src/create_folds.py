@@ -22,7 +22,7 @@ def create_dataset(folder_path) -> pd.DataFrame:
 
 def label_dataset() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     import os
-    dataset_dir: str = '../clasificador_img/input/'
+    dataset_dir: str = '../cnn_img/input/'
     train_dir: str = os.path.join(dataset_dir, 'train/')
     val_dir: str = os.path.join(dataset_dir, 'val/')
     test_dir: str = os.path.join(dataset_dir, 'test/')
@@ -80,7 +80,8 @@ def return_dataset() -> tuple:
         transforms.Resize((256, 256)),
         transforms.Grayscale(),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(15),
+        transforms.RandomVerticalFlip(),
+        transforms.RandomRotation(20),
         transforms.RandomAffine(degrees=10, translate=(0.1, 0.1)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5], std=[0.5]),

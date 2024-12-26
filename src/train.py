@@ -23,6 +23,7 @@ import torch.nn as nn
 
 
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+epochs: int = 25
 
 
 def prepare_model_for_gpu(model) -> any:
@@ -53,7 +54,7 @@ def apply_smote(train_loader) -> TensorDataset:
 
 def print_epoch_results(epoch, train_loss, train_acc, val_loss, val_acc, precision, recall, f1, cm) -> None:
     print(
-        f"Epoch [{epoch}/30] Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}% | Val Loss: {val_loss:.4f}, "
+        f"Epoch [{epoch}/{epochs}] Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}% | Val Loss: {val_loss:.4f}, "
         f"Val Acc: {val_acc:.2f}%")
     print(f"Validation Metrics: Precision: {precision:.4f}, Recall: {recall:.4f}, F1-Score: {f1:.4f}")
     cm_line: str = "Confusion Matrix: " + " ".join(map(str, cm.flatten()))
@@ -88,7 +89,7 @@ def evaluate_model(model, dataloader, device='cuda') -> tuple:
 accumulation_steps: int = 4
 
 
-def train_model_with_history(model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs=30) -> tuple:
+def train_model_with_history(model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs=25) -> tuple:
     train_losses: list[float] = []
     val_losses: list[float] = []
     train_accuracies: list[float] = []
@@ -201,7 +202,7 @@ if __name__ == "__main__":
         criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss(weight=class_weights)
 
         optimizer: optim.AdamW = optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-4)
-        scheduler: ReduceLROnPlateau = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
+        scheduler: ReduceLROnPlateau = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
 
         print("Training Custom CNN Model with SMOTE...")
         print()

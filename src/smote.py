@@ -12,8 +12,8 @@ def apply_smote(features, labels) -> tuple:
 
 def extract_latent_features(model, data_loader, device):
     model.eval()
-    features = []
-    labels = []
+    features: list = []
+    labels: list = []
     with torch.no_grad():
         for images, targets in data_loader:
             images = images.to(device)
