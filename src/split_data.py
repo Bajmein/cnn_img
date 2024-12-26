@@ -2,11 +2,10 @@ import os
 import shutil
 from glob import glob
 import random
-
 from typing_extensions import LiteralString
 
 
-def redistribute_data(train_dir, val_dir, class_names, val_split=0.2, seed=42) -> None:
+def redistribute_data(train_dir, val_dir, class_names, val_split=0.1, seed=42) -> None:
     random.seed(seed)
     for class_name in class_names:
         train_class_dir: LiteralString | str | bytes = os.path.join(train_dir, class_name)

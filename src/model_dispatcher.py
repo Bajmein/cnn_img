@@ -27,7 +27,7 @@ class CustomCNN(nn.Module):
         self.fc3 = nn.Linear(64, 32)
         self.fc4 = nn.Linear(32, 2)
 
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(0.3)
 
     def _get_conv_output(self, x) -> int:
         x = self.pool(F.relu(self.bn1(self.conv1(x))))

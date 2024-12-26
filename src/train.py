@@ -4,6 +4,8 @@ import warnings
 from torch.utils.data import TensorDataset
 from traitlets.config.loader import ArgumentParser
 
+from losses import FocalLoss
+
 warnings.filterwarnings('ignore')
 
 import argparse
@@ -23,7 +25,7 @@ import torch.nn as nn
 
 
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-epochs: int = 25
+epochs: int = 15
 
 
 def prepare_model_for_gpu(model) -> any:
@@ -198,10 +200,11 @@ if __name__ == "__main__":
             shuffle=True
         )
 
-        class_weights: torch.Tensor = torch.tensor([3.0, 1.0]).to(device)
-        criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss(weight=class_weights)
+        # class_weights: torch.Tensor = torch.tensor([4.0, 1.0]).to(device)
+        # criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss(weight=class_weights)
+        criterion: FocalLoss = FocalLoss(alpha=1, gamma=3)
 
-        optimizer: optim.AdamW = optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-4)
+        optimizer: optim.AdamW = optim.AdamW(model.parameters(), lr=0.0007, weight_decay=1e-4)
         scheduler: ReduceLROnPlateau = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
 
         print("Training Custom CNN Model with SMOTE...")
