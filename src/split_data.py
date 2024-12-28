@@ -1,8 +1,9 @@
 import os
 import shutil
-from glob import glob
 import random
+from glob import glob
 from typing_extensions import LiteralString
+from config import TRAIN_DIR, VAL_DIR, CLASES
 
 
 def redistribute_data(train_dir, val_dir, class_names, val_split=0.1, seed=42) -> None:
@@ -27,8 +28,8 @@ def redistribute_data(train_dir, val_dir, class_names, val_split=0.1, seed=42) -
 
 
 if __name__ == "__main__":
-    train_dir: str = "C:/Users/usuario/PycharmProjects/cnn_img/input/train"
-    val_dir: str = "C:/Users/usuario/PycharmProjects/cnn_img/input/val"
-    class_names: list[str] = ["NORMAL", "PNEUMONIA"]
+    train_dir: str = TRAIN_DIR
+    val_dir: str = VAL_DIR
+    class_names: list[str] = CLASES
 
     redistribute_data(train_dir, val_dir, class_names, val_split=0.2)

@@ -1,4 +1,3 @@
-# import time
 import pandas as pd
 import numpy as np
 import os
@@ -7,52 +6,47 @@ from PIL import Image
 from imblearn.over_sampling import SMOTE
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
+from config import TRAIN_DIR, VAL_DIR, TEST_DIR, TAMANO_IMAGEN, BATCH_SIZE
 
 
-def create_dataset(folder_path) -> pd.DataFrame:
-    my_list: list = []
-    for category in ['NORMAL', 'PNEUMONIA']:
-        category_path: str = os.path.join(folder_path, category)
-        for file_name in os.listdir(category_path):
-            file_path = os.path.join(category_path, file_name)
-            if os.path.isfile(file_path) and file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                my_list.append([file_path, category])
-    return pd.DataFrame(my_list, columns=['file_path', 'label'])
+def crear_dataset(ruta_carpeta) -> pd.DataFrame:
+    lista_imagenes: list = []
+    for categoria in ['NORMAL', 'PNEUMONIA']:
+        ruta_categoria: str = os.path.join(ruta_carpeta, categoria)
+        for nombre_archivo in os.listdir(ruta_categoria):
+            ruta_archivo = os.path.join(ruta_categoria, nombre_archivo)
+            if os.path.isfile(ruta_archivo) and nombre_archivo.lower().endswith(('.png', '.jpg', '.jpeg')):
+                lista_imagenes.append([ruta_archivo, categoria])
+    return pd.DataFrame(lista_imagenes, columns=['ruta_archivo', 'etiqueta'])
 
 
-def label_dataset() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    import os
-    dataset_dir: str = '../cnn_img/input/'
-    train_dir: str = os.path.join(dataset_dir, 'train/')
-    val_dir: str = os.path.join(dataset_dir, 'val/')
-    test_dir: str = os.path.join(dataset_dir, 'test/')
-    print(f"Train directory: {train_dir}")
+def etiquetar_dataset() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    print(f"Directorio de entrenamiento: {TRAIN_DIR}")
 
     try:
-        train_df: pd.DataFrame = create_dataset(train_dir)
-        val_df: pd.DataFrame = create_dataset(val_dir)
-        test_df: pd.DataFrame = create_dataset(test_dir)
+        df_entrenamiento: pd.DataFrame = crear_dataset(TRAIN_DIR)
+        df_validacion: pd.DataFrame = crear_dataset(VAL_DIR)
+        df_prueba: pd.DataFrame = crear_dataset(TEST_DIR)
     except FileNotFoundError as e:
-        raise FileNotFoundError(f"Error: One or more directories are missing: {e}")
+        raise FileNotFoundError(f"Error: Una o más carpetas están ausentes: {e}")
 
-    if train_df.empty or val_df.empty or test_df.empty:
-        raise ValueError("One or more datasets are empty. Please check the folder structure and data.")
+    if df_entrenamiento.empty or df_validacion.empty or df_prueba.empty:
+        raise ValueError("Uno o más datasets están vacíos. Por favor, verifica la estructura de las carpetas y los datos.")
 
-    label_mapping: dict[str, int] = {'NORMAL': 0, 'PNEUMONIA': 1}
-    train_df['label'] = train_df['label'].map(label_mapping)
-    val_df['label'] = val_df['label'].map(label_mapping)
-    test_df['label'] = test_df['label'].map(label_mapping)
+    mapeo_etiquetas: dict[str, int] = {'NORMAL': 0, 'PNEUMONIA': 1}
+    df_entrenamiento['etiqueta'] = df_entrenamiento['etiqueta'].map(mapeo_etiquetas)
+    df_validacion['etiqueta'] = df_validacion['etiqueta'].map(mapeo_etiquetas)
+    df_prueba['etiqueta'] = df_prueba['etiqueta'].map(mapeo_etiquetas)
 
-    for dataset_name, df in zip(['Train', 'Validation', 'Test'], [train_df, val_df, test_df]):
-        if df['label'].isnull().any():
-            print(f"Warning: Unmapped labels found in {dataset_name} dataset.")
-            print(df[df['label'].isnull()])
-            raise ValueError(f"Unmapped labels in {dataset_name} dataset. Check folder names or label mapping.")
+    for nombre_dataset, df in zip(['Entrenamiento', 'Validación', 'Prueba'], [df_entrenamiento, df_validacion, df_prueba]):
+        if df['etiqueta'].isnull().any():
+            print(f"Advertencia: Etiquetas no mapeadas encontradas en el dataset {nombre_dataset}.")
+            raise ValueError(f"Etiquetas no mapeadas en el dataset {nombre_dataset}. Verifica los nombres de las carpetas o el mapeo de etiquetas.")
 
-    return train_df, val_df, test_df
+    return df_entrenamiento, df_validacion, df_prueba
 
 
-class ImageDataset(torch.utils.data.Dataset):
+class DatasetImagenes(torch.utils.data.Dataset):
     def __init__(self, dataframe, transform=None) -> None:
         self.dataframe = dataframe
         self.transform = transform
@@ -61,23 +55,23 @@ class ImageDataset(torch.utils.data.Dataset):
         return len(self.dataframe)
 
     def __getitem__(self, idx):
-        img_path = self.dataframe.iloc[idx, 0]
-        label = int(self.dataframe.iloc[idx, 1])
-        img = Image.open(img_path).convert('L')
+        ruta_img = self.dataframe.iloc[idx, 0]
+        etiqueta = int(self.dataframe.iloc[idx, 1])
+        img = Image.open(ruta_img).convert('L')
 
         if self.transform:
             img = self.transform(img)
 
-        label = torch.tensor(int(label), dtype=torch.long)
+        etiqueta = torch.tensor(etiqueta, dtype=torch.long)
 
-        return img, label
+        return img, etiqueta
 
 
-def return_dataset() -> tuple:
-    train_df, val_df, test_df = label_dataset()
+def obtener_datasets() -> tuple:
+    df_entrenamiento, df_validacion, df_prueba = etiquetar_dataset()
 
-    train_transform_cnn: transforms.Compose = transforms.Compose([
-        transforms.Resize((256, 256)),
+    transform_entrenamiento = transforms.Compose([
+        transforms.Resize((TAMANO_IMAGEN, TAMANO_IMAGEN)),
         transforms.Grayscale(),
         transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
@@ -87,35 +81,47 @@ def return_dataset() -> tuple:
         transforms.Normalize(mean=[0.5], std=[0.5]),
     ])
 
-    val_transform_cnn: transforms.Compose = transforms.Compose([
-        transforms.Resize((256, 256)),
+    transform_val_prueba = transforms.Compose([
+        transforms.Resize((TAMANO_IMAGEN, TAMANO_IMAGEN)),
         transforms.Grayscale(),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5], std=[0.5]),
     ])
 
-    train_dataset_cnn: ImageDataset = ImageDataset(train_df, transform=train_transform_cnn)
-    val_dataset_cnn: ImageDataset = ImageDataset(val_df, transform=val_transform_cnn)
-    test_dataset_cnn: ImageDataset = ImageDataset(test_df, transform=val_transform_cnn)
+    dataset_entrenamiento = DatasetImagenes(df_entrenamiento, transform=transform_entrenamiento)
+    dataset_validacion = DatasetImagenes(df_validacion, transform=transform_val_prueba)
+    dataset_prueba = DatasetImagenes(df_prueba, transform=transform_val_prueba)
 
-    smote: SMOTE = SMOTE(sampling_strategy='auto', random_state=42)
-    data, labels = zip(*[(x.view(-1).numpy(), y.item()) for x, y in train_dataset_cnn])
-    data, labels = np.array(data), np.array(labels)
+    smote = SMOTE(sampling_strategy='auto', random_state=42)
+    data, etiquetas = zip(*[(x.view(-1).numpy(), y.item()) for x, y in dataset_entrenamiento])
+    data, etiquetas = np.array(data), np.array(etiquetas)
 
-    data_resampled, labels_resampled = smote.fit_resample(data, labels)
-    data_resampled = data_resampled.reshape(-1, 1, 256, 256)
+    data_resampled, etiquetas_resampled = smote.fit_resample(data, etiquetas)
+    data_resampled = data_resampled.reshape(-1, 1, TAMANO_IMAGEN, TAMANO_IMAGEN)
 
-    smote_dataset: TensorDataset = TensorDataset(torch.tensor(data_resampled, dtype=torch.float32),
-                                  torch.tensor(labels_resampled, dtype=torch.long))
+    dataset_smote = TensorDataset(torch.tensor(data_resampled, dtype=torch.float32),
+                                   torch.tensor(etiquetas_resampled, dtype=torch.long))
 
-    batch_size: int = 32
+    loader_entrenamiento = DataLoader(
+        dataset_smote,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True
+    )
 
-    train_loader_cnn: DataLoader = DataLoader(smote_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    val_loader_cnn: DataLoader = DataLoader(val_dataset_cnn, batch_size=batch_size, shuffle=False, num_workers=4)
-    test_loader_cnn: DataLoader = DataLoader(test_dataset_cnn, batch_size=batch_size, shuffle=False, num_workers=4)
+    loader_validacion = DataLoader(
+        dataset_validacion,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True
+    )
 
-    return train_loader_cnn, val_loader_cnn, test_loader_cnn
+    loader_prueba = DataLoader(dataset_prueba, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
+
+    return loader_entrenamiento, loader_validacion, loader_prueba
 
 
 if __name__ == "__main__":
-    return_dataset()
+    obtener_datasets()
